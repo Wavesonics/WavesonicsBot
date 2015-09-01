@@ -137,17 +137,23 @@ while running:  # Be careful with these! It might send you to an infinite loop
 					user_message = UserMessage(irc_msg)
 					individual_worlds = user_message.body_lower.split()
 					found_watch_word = find_watch_word_response(individual_worlds)
+					# Respond to our watch words
 					if found_watch_word:
 						sendmsg(channel, found_watch_word)
+					# respond to things directed at us
 					elif user_message.body_lower.find(bot_nick.lower()) != -1:
+						# Greetings
 						if user_message.body_lower.find("hello") != -1 or user_message.body_lower.find("hi") != -1:  # Standard greeting
 							hello(user_message)
+						# Soft quite
 						elif user_message.body_lower.find("leave") != -1:
 							sendmsg(channel, "Good bye")
 							print("I was told to leave")
 							running = False
-						else:  # Random response
+						# Random response
+						else:
 							respond_to_message(user_message, random.choice(common_responses))
+					# A low random chance to say something out of the blue
 					elif random.randint(0, tid_bit_chance) == 1:
 						sendmsg(channel, random.choice(tid_bits))
 				elif irc_msg.command == 'NOTICE':
