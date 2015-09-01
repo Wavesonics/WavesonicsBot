@@ -155,8 +155,8 @@ irc_send("NICK " + bot_nick)  # here we actually assign the nick to the bot
 irc_send("USER " + bot_nick + " " + bot_nick + " " + bot_nick + " :" + bot_description)  # user authentication
 
 running = True
-while running:  # Be careful with these! It might send you to an infinite loop
-	irc_blob = irc_sock.recv(recv_port)  # receive data from the server
+while running:  # Message pump
+	irc_blob = irc_sock.recv(recv_port)  # Receive data from the server, could be a batch of messages
 	irc_msgs = irc_blob.strip().split('\n')
 
 	if irc_msgs:
