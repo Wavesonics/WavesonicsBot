@@ -12,6 +12,7 @@ recv_port = 2048  # Receive Port
 # channel = "#climbing"  # Channel
 channel = "#wavesonicstest"
 bot_nick = "WavesonicsBot"  # Your bots nick
+bot_description = "This is my bot, there are many like it but this one is mine."
 
 if len(sys.argv) > 1:
 	print sys.argv
@@ -92,32 +93,66 @@ def find_watch_word_response(msg_words):
 	for words in watch_words:
 		for word in words[0]:
 			if word in msg_words:
-				watch_word = words[1]
+				watch_word = random.choice(words[1])
+				break
+	return watch_word
+
+
+def find_directed_response(msg_words):
+	watch_word = None
+	for words in directed:
+		for word in words[0]:
+			if word in msg_words:
+				watch_word = random.choice(words[1])
 				break
 	return watch_word
 
 
 # Responses when we see our name
 common_responses = ["lol", "LOL", "hehe", "haha", ":P", "SpaceX", "interesting", "ya", "yaaaa", "cool"]
+
 # Randomly spouted into the channel
-tid_bits = ["Space is so fucking cool!", "Trad climbing", "lol cats"]
-tid_bit_chance = 100
+tid_bits = \
+	[
+		"Space is so fucking cool!",
+		"Trad climbers am I right?",
+		"lol cats",
+		"Rock climbing is pretty cool I guess",
+		"Man it's hot in here",
+		"brb"
+	]
+tid_bit_chance = 1000  # 1 in X chance of spouting a tid bit
+
 # If we see any of these words we will say the corresponding response
 watch_words = \
 	[
-		[["destiny"], "Oh man, TTK must be out by now... I'm going to have to play that when I get back"],
-		[["cats", "cat", "kitten", "kittens"], "aw"],
-		[["free solo", "freesolo", "free-solo"], "whoa that's crazy man"],
-		[["yosemite", "yos"], "Hey that's where I am right now!!! :D"],
-		[["space", "spacex"], "SpaceX pushed back their return to flight again by a few months :("],
-		[["wavesonics"], "Damn that guy is cool"],
+		[["destiny"], ["Oh man, TTK must be out by now... I'm going to have to play that when I get back", "I hear their companion app is awesome."]],
+		[["cats", "cat", "kitten", "kittens"], ["aw", "cute"]],
+		[["freesolo", "free-solo"], ["whoa that's crazy man", "Alex Honnold"]],
+		[["yosemite", "yos"], ["Hey that's where I am right now!!! :D"]],
+		[["space", "spacex"], ["SpaceX pushed back their return to flight again by a few months :("]],
+		[["wavesonics"], ["Damn that guy is cool", "so handsome", "I hear he's out climbing in Yosemite right now"]],
+		[["dicks", "dick"], ["Whoa there!"]],
+		[["beer"], ["I could go for one", "attaboy nonsense", "beta kill"]],
+	]
+
+# Only respond to these if they are directed at us
+directed = \
+	[
+		[["goodnight", "night"], ["Good night :)", "nighty night"]],
+		[["tinyonion"], ["That guy's all right", "Not so tiny, but he'll make you cry"]],
+		[["toasti"], ["Toasted", "Gotta butter him up"]],
+		[["kdj"], ["It's just a bunch of letters that became sentient", "Katie Jay"]],
+		[["ned"], ["Flanders"]],
+		[["nonsense"], ["I could beat him in a fight", "beta kill nonsense"]],
+		[["beta"], ["nonsense beta", "na he's cool"]],
 	]
 
 irc_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 irc_sock.connect((server, port))  # Here we connect to the server using port 6667
 
 irc_send("NICK " + bot_nick)  # here we actually assign the nick to the bot
-irc_send("USER " + bot_nick + " " + bot_nick + " " + bot_nick + ":I am a bot")  # user authentication
+irc_send("USER " + bot_nick + " " + bot_nick + " " + bot_nick + " :" + bot_description)  # user authentication
 
 running = True
 while running:  # Be careful with these! It might send you to an infinite loop
@@ -135,17 +170,22 @@ while running:  # Be careful with these! It might send you to an infinite loop
 				# Handle the general IRC message type
 				if irc_msg.command == 'PRIVMSG':
 					user_message = UserMessage(irc_msg)
-					individual_worlds = user_message.body_lower.split()
-					found_watch_word = find_watch_word_response(individual_worlds)
+					individual_words = user_message.body_lower.split()
+					found_watch_word = find_watch_word_response(individual_words)
 					# Respond to our watch words
 					if found_watch_word:
 						sendmsg(channel, found_watch_word)
 					# respond to things directed at us
 					elif user_message.body_lower.find(bot_nick.lower()) != -1:
+						directed_response = find_directed_response(individual_words)
+						if directed_response:
+							sendmsg(channel, directed_response)
 						# Greetings
-						if user_message.body_lower.find("hello") != -1 or user_message.body_lower.find("hi") != -1:  # Standard greeting
+						elif user_message.body_lower.find("hello") != -1 \
+								or user_message.body_lower.find("hi") != -1 \
+								or user_message.body_lower.find("yo") != -1:
 							hello(user_message)
-						# Soft quite
+						# Soft quit
 						elif user_message.body_lower.find("leave") != -1:
 							sendmsg(channel, "Good bye")
 							print("I was told to leave")
