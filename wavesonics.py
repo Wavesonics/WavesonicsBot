@@ -9,8 +9,8 @@ import sys
 server = "irc.snoonet.org"  # Server
 port = 6667  # Port
 recv_port = 2048  # Receive Port
-# channel = "#climbing"  # Channel
-channel = "#wavesonicstest"
+channel = "#climbing"  # Channel
+# channel = "#wavesonicstest"
 bot_nick = "WavesonicsBot"  # Bots nick
 bot_description = "This is my bot, there are many like it but this one is mine."
 
@@ -168,63 +168,75 @@ while running:  # Message pump
 
 			if msg_str:
 				print("RECV: '" + msg_str + "'")  # Print what's coming from the server
-				irc_msg = IrcMessage(msg_str)
+				try:
+					irc_msg = IrcMessage(msg_str)
 
-				# Handle the general IRC message type
-				if irc_msg.command == 'PRIVMSG':
-					user_message = UserMessage(irc_msg)
-					individual_words = user_message.body_lower.split()
-					found_watch_word = find_watch_word_response(individual_words)
-					# Respond to our watch words
-					if found_watch_word:
-						sendmsg(channel, found_watch_word)
-					# respond to things directed at us
-					elif user_message.body_lower.find(bot_nick.lower()) != -1:
-						directed_response = find_directed_response(individual_words)
-						if directed_response:
-							sendmsg(channel, directed_response)
-						# Greetings
-						elif user_message.body_lower.find("hello") != -1 \
-								or user_message.body_lower.find("hi") != -1 \
-								or user_message.body_lower.find("yo") != -1:
-							hello(user_message)
-						# Soft quit
-						elif user_message.body_lower.find("leave") != -1 and (user_message.name.lower() == "wavesonics" or user_message.name.lower() == "tinyonion"):
-							if user_message.name.lower() == "tinyonion":
-								sendmsg(channel, "Fiiiiine, but only because I like you")
+					# Handle the general IRC message type
+					if irc_msg.command == 'PRIVMSG':
+						user_message = UserMessage(irc_msg)
+						individual_words = user_message.body_lower.split()
+						found_watch_word = find_watch_word_response(individual_words)
+						# Respond to our watch words
+						if found_watch_word:
+							sendmsg(channel, found_watch_word)
+						# respond to things directed at us
+						elif user_message.body_lower.find(bot_nick.lower()) != -1:
+							directed_response = find_directed_response(individual_words)
+							if directed_response:
+								sendmsg(channel, directed_response)
+							# Greetings
+							elif user_message.body_lower.find("hello") != -1 \
+									or user_message.body_lower.find("hi") != -1 \
+									or user_message.body_lower.find("hey") != -1 \
+									or user_message.body_lower.find("yo") != -1:
+								hello(user_message)
+							# Soft quit
+							elif user_message.body_lower.find("leave") != -1 and (user_message.name.lower() == "wavesonics" or user_message.name.lower() == "tinyonion"):
+								leaving = False
+								if user_message.name.lower() == "tinyonion":
+									sendmsg(channel, "Fiiiiine, but only because I like you")
+									leaving = True
+								elif user_message.name.lower() == "wavesonics":
+									sendmsg(channel, "Good bye")
+									leaving = True
+								else:
+									sendmsg(channel, "You're not my read dad!")
+
+								if leaving:
+									print("I was told to leave")
+
+								running = not leaving
+							# Random response
 							else:
-								sendmsg(channel, "Good bye")
-							print("I was told to leave")
+								respond_to_message(user_message, random.choice(common_responses))
+						# A low random chance to say a common response
+						elif random.randint(0, common_response_chance) == 1:
+							sendmsg(channel, random.choice(common_responses))
+						# A lower random chance to say something out of the blue
+						elif random.randint(0, tid_bit_chance) == 1:
+							sendmsg(channel, random.choice(tid_bits))
+					elif irc_msg.command == 'NOTICE':
+						# Handle the login & join sequence
+						if irc_msg.source == 'NickServ!NickServ@snoonet/services/NickServ' \
+								and irc_msg.params[0] == bot_nick \
+								and irc_msg.body.find('nick') == 0:
+							nick_auth()
+						elif irc_msg.source == 'NickServ!NickServ@snoonet/services/NickServ' \
+								and irc_msg.params[0] == bot_nick \
+								and irc_msg.body.find('Password accepted') == 0:
+							join_chan(channel)
+					# Handle other general commands
+					elif irc_msg.command == "PING":  # if the server pings us then we've got to respond!
+						respond_to_ping(irc_msg)
+					elif irc_msg.command == "ERROR":
+						if irc_msg.body.find("Closing link:") != -1:
+							print("Socket closed.")
 							running = False
-						# Random response
 						else:
-							respond_to_message(user_message, random.choice(common_responses))
-					# A low random chance to say a common response
-					elif random.randint(0, common_response_chance) == 1:
-						sendmsg(channel, random.choice(common_responses))
-					# A lower random chance to say something out of the blue
-					elif random.randint(0, tid_bit_chance) == 1:
-						sendmsg(channel, random.choice(tid_bits))
-				elif irc_msg.command == 'NOTICE':
-					# Handle the login & join sequence
-					if irc_msg.source == 'NickServ!NickServ@snoonet/services/NickServ' \
-							and irc_msg.params[0] == bot_nick \
-							and irc_msg.body.find('nick') == 0:
-						nick_auth()
-					elif irc_msg.source == 'NickServ!NickServ@snoonet/services/NickServ' \
-							and irc_msg.params[0] == bot_nick \
-							and irc_msg.body.find('Password accepted') == 0:
-						join_chan(channel)
-				# Handle other general commands
-				elif irc_msg.command == "PING":  # if the server pings us then we've got to respond!
-					respond_to_ping(irc_msg)
-				elif irc_msg.command == "ERROR":
-					if irc_msg.body.find("Closing link:") != -1:
-						print("Socket closed.")
-						running = False
+							print("Error!")
 					else:
-						print("Error!")
-				else:
-					print("Unhandled message type: " + irc_msg.command)
+						print("Unhandled message type: " + irc_msg.command)
+				except IndexError:
+					print("Error parsing IRC message")
 
 irc_sock.close()
