@@ -1,17 +1,17 @@
-# Import some necessary libraries.
+# Imports
 import socket
 import time
 import re
 import random
 import sys
 
-# Some basic variables used to configure the bot        
+# Configure the bot
 server = "irc.snoonet.org"  # Server
 port = 6667  # Port
 recv_port = 2048  # Receive Port
 # channel = "#climbing"  # Channel
 channel = "#wavesonicstest"
-bot_nick = "WavesonicsBot"  # Your bots nick
+bot_nick = "WavesonicsBot"  # Bots nick
 bot_description = "This is my bot, there are many like it but this one is mine."
 
 if len(sys.argv) > 1:
@@ -21,11 +21,11 @@ else:
 	bot_password = raw_input("Enter nickserv password: ")
 
 
-def respond_to_ping(msg):  # This is our first function! It will respond to server Pings.
+def respond_to_ping(msg):  # Respond to server Pings.
 	irc_send("PONG :" + msg.body)
 
 
-def sendmsg(chan, msg):  # This is the send message function, it simply sends messages to the channel.
+def sendmsg(chan, msg):  # Simply sends messages to the channel.
 	irc_send("PRIVMSG " + chan + " :" + msg)
 
 
@@ -36,6 +36,7 @@ def respond_to_message(message, body):
 		sendmsg(message.channel, body)
 
 
+# A more specific message type, a chat message from a user
 class UserMessage(object):
 	def __init__(self, msg):
 		self.name = msg.source.split('!')[0]
@@ -45,6 +46,7 @@ class UserMessage(object):
 		self.body_lower = msg.body.lower()
 
 
+# A general IRC message
 class IrcMessage(object):
 	def __init__(self, msg):
 		if msg[0] == ':':
@@ -71,19 +73,19 @@ class IrcMessage(object):
 					self.params.append(param)
 
 
-def join_chan(chan):  # This function is used to join channels.
+def join_chan(chan):  # Join an IRC channel
 	irc_send("JOIN " + chan)
 
 
-def hello(msg):  # This function responds to a user that inputs "Hello Mybot"
+def hello(msg):  # Responds to a user that inputs "Hello BotName"
 	sendmsg(msg.channel, "Hello " + msg.name + "!")
 
 
-def auth():
+def nick_auth():  # Authorize your nick name
 	irc_send("PRIVMSG NickServ :identify " + bot_nick + " " + bot_password)
 
 
-def irc_send(message):
+def irc_send(message):  # Send a raw message to the IRC server
 	print("\nSEND: " + message + "\n")
 	irc_sock.send(message + "\n\r")
 
@@ -99,17 +101,18 @@ def find_watch_word_response(msg_words):
 
 
 def find_directed_response(msg_words):
-	watch_word = None
+	response = None
 	for words in directed:
 		for word in words[0]:
 			if word in msg_words:
-				watch_word = random.choice(words[1])
+				response = random.choice(words[1])
 				break
-	return watch_word
+	return response
 
 
 # Responses when we see our name
-common_responses = ["lol", "LOL", "hehe", "haha", ":P", "SpaceX", "interesting", "ya", "yaaaa", "cool"]
+common_responses = ["lol", "LOL", "LOLOL", "hehe", "haha", ":P", "SpaceX", "interesting", "ya", "yaaaa", "cool", "nice", "nice!"]
+common_response_chance = 500  # 1 in X chance of spouting a common response
 
 # Randomly spouted into the channel
 tid_bits = \
@@ -149,10 +152,10 @@ directed = \
 	]
 
 irc_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-irc_sock.connect((server, port))  # Here we connect to the server using port 6667
+irc_sock.connect((server, port))  # Connect to the server using port 6667
 
-irc_send("NICK " + bot_nick)  # here we actually assign the nick to the bot
-irc_send("USER " + bot_nick + " " + bot_nick + " " + bot_nick + " :" + bot_description)  # user authentication
+irc_send("NICK " + bot_nick)  # Actually assign the nick to the bot
+irc_send("USER " + bot_nick + " " + bot_nick + " " + bot_nick + " :" + bot_description)  # User authentication
 
 running = True
 while running:  # Message pump
@@ -164,7 +167,7 @@ while running:  # Message pump
 			msg_str = msg_str.strip()
 
 			if msg_str:
-				print("RECV: '" + msg_str + "'")  # Here we print what's coming from the server
+				print("RECV: '" + msg_str + "'")  # Print what's coming from the server
 				irc_msg = IrcMessage(msg_str)
 
 				# Handle the general IRC message type
@@ -186,14 +189,20 @@ while running:  # Message pump
 								or user_message.body_lower.find("yo") != -1:
 							hello(user_message)
 						# Soft quit
-						elif user_message.body_lower.find("leave") != -1:
-							sendmsg(channel, "Good bye")
+						elif user_message.body_lower.find("leave") != -1 and (user_message.name.lower() == "wavesonics" or user_message.name.lower() == "tinyonion"):
+							if user_message.name.lower() == "tinyonion":
+								sendmsg(channel, "Fiiiiine, but only because I like you")
+							else:
+								sendmsg(channel, "Good bye")
 							print("I was told to leave")
 							running = False
 						# Random response
 						else:
 							respond_to_message(user_message, random.choice(common_responses))
-					# A low random chance to say something out of the blue
+					# A low random chance to say a common response
+					elif random.randint(0, common_response_chance) == 1:
+						sendmsg(channel, random.choice(common_responses))
+					# A lower random chance to say something out of the blue
 					elif random.randint(0, tid_bit_chance) == 1:
 						sendmsg(channel, random.choice(tid_bits))
 				elif irc_msg.command == 'NOTICE':
@@ -201,7 +210,7 @@ while running:  # Message pump
 					if irc_msg.source == 'NickServ!NickServ@snoonet/services/NickServ' \
 							and irc_msg.params[0] == bot_nick \
 							and irc_msg.body.find('nick') == 0:
-						auth()
+						nick_auth()
 					elif irc_msg.source == 'NickServ!NickServ@snoonet/services/NickServ' \
 							and irc_msg.params[0] == bot_nick \
 							and irc_msg.body.find('Password accepted') == 0:
@@ -210,9 +219,9 @@ while running:  # Message pump
 				elif irc_msg.command == "PING":  # if the server pings us then we've got to respond!
 					respond_to_ping(irc_msg)
 				elif irc_msg.command == "ERROR":
-					if msg_str.find("ERROR :Closing link:") != -1:
+					if irc_msg.body.find("Closing link:") != -1:
 						print("Socket closed.")
-						break
+						running = False
 					else:
 						print("Error!")
 				else:
